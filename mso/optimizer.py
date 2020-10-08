@@ -45,10 +45,8 @@ class BasePSOptimizer:
         fitness = 0
         mol_list = [Chem.MolFromSmiles(sml) for sml in swarm.smiles]
         for scoring_function in self.scoring_functions:
-            if scoring_function.is_mol_func:
-                unscaled_scores, scaled_scores, desirability_scores = scoring_function(mol_list)
-            else:
-                unscaled_scores, scaled_scores, desirability_scores = scoring_function(swarm.x)
+            unscaled_scores, scaled_scores, desirability_scores = scoring_function(swarm.smiles)
+
             swarm.unscaled_scores[scoring_function.name] = unscaled_scores
             swarm.scaled_scores[scoring_function.name] = scaled_scores
             swarm.desirability_scores[scoring_function.name] = desirability_scores
@@ -115,8 +113,13 @@ class BasePSOptimizer:
         :return: The optimized particle swarm.
         """
         # evaluate initial score
+        smiles_history = []
+
+        assert len(self.swarms) == 1
         for swarm in self.swarms:
             self.update_fitness(swarm)
+            smiles_history.append(swarm.smiles)
+
         for step in range(num_steps):
             self._update_best_fitness_history(step)
             max_fitness, min_fitness, mean_fitness = self._update_best_solutions(num_track)
@@ -124,7 +127,8 @@ class BasePSOptimizer:
                   % (step, max_fitness, min_fitness, mean_fitness))
             for swarm in self.swarms:
                 self._next_step_and_evaluate(swarm)
-        return self.swarms
+                smiles_history.append(swarm.smiles)
+        return self.swarms, smiles_history
 
     @classmethod
     def from_query(cls, init_smiles, num_part, num_swarms, inference_model,
